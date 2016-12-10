@@ -710,9 +710,10 @@
             try {
               if (isSrefStateDefined()) {
                 var PermStateAuthorization = $injector.get('PermStateAuthorization');
+                var $state = $injector.get('$state');
 
                 PermStateAuthorization
-                  .authorizeByStateName(permission.sref)
+                  .authorizeByState($state.get(permission.sref))
                   .then(function () {
                     onAuthorizedAccess();
                   })
@@ -1017,6 +1018,10 @@
         return normalizeStringRedirectionRule(redirectTo);
       }
 
+      if (isInjectable(redirectTo) || angular.isFunction(redirectTo)) {
+        return normalizeFunctionRedirectionRule(redirectTo);
+      }
+
       if (angular.isObject(redirectTo)) {
         if (isObjectSingleRedirectionRule(redirectTo)) {
           return normalizeObjectSingleRedirectionRule(redirectTo);
@@ -1027,10 +1032,6 @@
         }
 
         throw new ReferenceError('When used "redirectTo" as object, property "default" must be defined');
-      }
-
-      if (angular.isFunction(redirectTo)) {
-        return normalizeFunctionRedirectionRule(redirectTo);
       }
 
       return redirectTo;
@@ -1053,7 +1054,6 @@
           state: redirectTo
         };
       };
-      redirectionMap.default.$inject = ['rejectedPermission', 'transitionProperties'];
 
       return redirectionMap;
     }
@@ -1086,7 +1086,6 @@
       redirectionMap.default = function () {
         return redirectTo;
       };
-      redirectionMap.default.$inject = ['rejectedPermission', 'transitionProperties'];
 
       return redirectionMap;
     }
@@ -1119,9 +1118,7 @@
       angular.forEach(redirectTo, function (redirection, permission) {
         if (isInjectable(redirection)) {
           redirectionMap[permission] = redirection;
-        }
-
-        if (angular.isFunction(redirection)) {
+        } else if (angular.isFunction(redirection)) {
           redirectionMap[permission] = redirection;
           redirectionMap[permission].$inject = ['rejectedPermission', 'transitionProperties'];
         }
@@ -1130,7 +1127,6 @@
           redirectionMap[permission] = function () {
             return redirection;
           };
-          redirectionMap[permission].$inject = ['rejectedPermission', 'transitionProperties'];
         }
 
         if (angular.isString(redirection)) {
@@ -1139,7 +1135,6 @@
               state: redirection
             };
           };
-          redirectionMap[permission].$inject = ['rejectedPermission', 'transitionProperties'];
         }
       });
 
@@ -1156,7 +1151,7 @@
      * @returns {boolean}
      */
     function isInjectable(property) {
-      return angular.isArray(property) || angular.isArray(property.$inject);
+      return property && (angular.isArray(property) || angular.isArray(property.$inject));
     }
 
     /**
@@ -1164,7 +1159,7 @@
      * @methodOf permission.PermissionMap
      * @private
      *
-     * @param redirectTo {Function} PermPermission map property "redirectTo"
+     * @param redirectTo {Function|Array} PermPermission map property "redirectTo"
      *
      * @returns {Object<String, Object>} Redirection dictionary object
      */
@@ -1172,7 +1167,11 @@
       var redirectionMap = {};
 
       redirectionMap.default = redirectTo;
-      redirectionMap.default.$inject = ['rejectedPermission', 'transitionProperties'];
+
+      if (!isInjectable(redirectTo)) {
+        // Provide backwards compatibility with non-injected redirect
+        redirectionMap.default.$inject = ['rejectedPermission', 'transitionProperties'];
+      }
 
       return redirectionMap;
     }
