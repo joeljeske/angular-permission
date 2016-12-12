@@ -1,7 +1,7 @@
 /**
  * angular-permission
  * Fully featured role and permission based access control for your angular applications
- * @version v5.1.0 - 2016-12-10
+ * @version v5.1.0 - 2016-12-12
  * @link https://github.com/Narzerus/angular-permission
  * @author Rafael Vidaurre <narzerus@gmail.com> (http://www.rafaelvidaurre.com), Blazej Krysiak <blazej.krysiak@gmail.com>
  * @license MIT License, http://www.opensource.org/licenses/MIT
@@ -1121,15 +1121,11 @@
         } else if (angular.isFunction(redirection)) {
           redirectionMap[permission] = redirection;
           redirectionMap[permission].$inject = ['rejectedPermission', 'transitionProperties'];
-        }
-
-        if (angular.isObject(redirection)) {
+        } else if (angular.isObject(redirection)) {
           redirectionMap[permission] = function () {
             return redirection;
           };
-        }
-
-        if (angular.isString(redirection)) {
+        } else if (angular.isString(redirection)) {
           redirectionMap[permission] = function () {
             return {
               state: redirection
