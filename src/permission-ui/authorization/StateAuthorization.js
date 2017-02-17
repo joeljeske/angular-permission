@@ -116,16 +116,27 @@ function PermStateAuthorization($q, PermStatePermissionMap) {
       return [$q.reject()];
     }
 
-    return privilegesNames.map(function (statePrivileges) {
-      var resolvedStatePrivileges = map.resolvePropertyValidity(statePrivileges);
-      return $q.any(resolvedStatePrivileges)
-        .then(function (resolvedPermissions) {
-          if (angular.isArray(resolvedPermissions)) {
-            return resolvedPermissions[0];
-          }
-          return resolvedPermissions;
+    // This evaluates the access rights in order, such that the 
+    // its failure order is predictable. 
+    var promises = [];
+    privilegesNames.reduce(function (prev, statePrivileges) {
+      promises.push($q(function(resolve, reject) {
+        prev.finally(function() {
+          var resolvedStatePrivileges = map.resolvePropertyValidity(statePrivileges);
+          $q.any(resolvedStatePrivileges)
+            .then(function (resolvedPermissions) {
+              if (angular.isArray(resolvedPermissions)) {
+                return resolvedPermissions[0];
+              }
+              return resolvedPermissions;
+            })
+            .then(resolve, reject);
         });
-    });
+      }));
+      return promises[promises.length - 1];
+    }, $q.resolve());
+    
+    return promises;
   }
 }
 
