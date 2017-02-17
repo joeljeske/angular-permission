@@ -1,7 +1,7 @@
 /**
  * angular-permission-ui
  * Extension module of angular-permission for access control within ui-router
- * @version v5.1.0 - 2016-12-12
+ * @version v5.1.0 - 2017-02-17
  * @link https://github.com/Narzerus/angular-permission
  * @author Rafael Vidaurre <narzerus@gmail.com> (http://www.rafaelvidaurre.com), Blazej Krysiak <blazej.krysiak@gmail.com>
  * @license MIT License, http://www.opensource.org/licenses/MIT
@@ -403,16 +403,27 @@
         return [$q.reject()];
       }
 
-      return privilegesNames.map(function (statePrivileges) {
-        var resolvedStatePrivileges = map.resolvePropertyValidity(statePrivileges);
-        return $q.any(resolvedStatePrivileges)
-          .then(function (resolvedPermissions) {
-            if (angular.isArray(resolvedPermissions)) {
-              return resolvedPermissions[0];
-            }
-            return resolvedPermissions;
+      // This evaluates the access rights in order, such that the 
+      // its failure order is predictable. 
+      var promises = [];
+      privilegesNames.reduce(function (prev, statePrivileges) {
+        promises.push($q(function (resolve, reject) {
+          prev.finally(function () {
+            var resolvedStatePrivileges = map.resolvePropertyValidity(statePrivileges);
+            $q.any(resolvedStatePrivileges)
+              .then(function (resolvedPermissions) {
+                if (angular.isArray(resolvedPermissions)) {
+                  return resolvedPermissions[0];
+                }
+                return resolvedPermissions;
+              })
+              .then(resolve, reject);
           });
-      });
+        }));
+        return promises[promises.length - 1];
+      }, $q.resolve());
+
+      return promises;
     }
   }
 
