@@ -10,6 +10,12 @@ describe('permission.ui', function () {
       var PermRoleStore;
 
       beforeEach(function () {
+
+        // changes to resolveStatePermissionMap() cause orphan rejected promises that don't get handled
+        module(function(_$qProvider_) {
+          _$qProvider_.errorOnUnhandledRejections(false);
+        });
+
         module('permission.ui');
 
         installPromiseMatchers(); // jshint ignore:line
