@@ -1,7 +1,7 @@
 /**
  * angular-permission-ui
  * Extension module of angular-permission for access control within ui-router
- * @version v5.1.0 - 2017-02-17
+ * @version v5.1.0 - 2018-01-22
  * @link https://github.com/Narzerus/angular-permission
  * @author Rafael Vidaurre <narzerus@gmail.com> (http://www.rafaelvidaurre.com), Blazej Krysiak <blazej.krysiak@gmail.com>
  * @license MIT License, http://www.opensource.org/licenses/MIT
@@ -354,12 +354,18 @@
     function resolveExceptStatePermissionMap(deferred, map) {
       var exceptPromises = resolveStatePermissionMap(map.except, map);
 
-      $q.all(exceptPromises)
-        .then(function (rejectedPermissions) {
-          deferred.reject(rejectedPermissions[0]);
-        })
-        .catch(function () {
+      // Reverse the promises, so if any "except" privileges are not met, the promise rejects
+      $q.all(reversePromises(exceptPromises))
+        .then(function () {
           resolveOnlyStatePermissionMap(deferred, map);
+        })
+        .catch(function (rejectedPermissions) {
+
+          if (!angular.isArray(rejectedPermissions)) {
+            rejectedPermissions = [rejectedPermissions];
+          }
+
+          deferred.reject(rejectedPermissions[0]);
         });
     }
 
@@ -424,6 +430,23 @@
       }, $q.resolve());
 
       return promises;
+    }
+
+    /**
+     * Creates an Array of Promises that resolve when rejected, and reject when resolved
+     * @methodOf permission.ui.PermStateAuthorization
+     * @private
+     *
+     * @param promises {Array} Array of promises
+     *
+     * @returns {Array<Promise>} Promise collection
+     */
+    function reversePromises(promises) {
+      return promises.map(function (promise) {
+        var d = $q.defer();
+        promise.then(d.reject, d.resolve);
+        return d.promise;
+      });
     }
   }
 
